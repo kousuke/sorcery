@@ -5,7 +5,7 @@ module Sorcery
     class Slack < Base
       include Protocols::Oauth2
 
-      attr_accessor :auth_path, :scope, :token_url, :user_info_path
+      attr_accessor :auth_path, :scope, :token_url, :user_info_path, :team_id
 
       def initialize
         super
@@ -30,7 +30,7 @@ module Sorcery
       # to get authenticated at the external provider's site.
       def login_url(_params, _session)
         @state = SecureRandom.hex(16)
-        authorize_url(authorize_url: auth_path)
+        authorize_url({authorize_url: auth_path})
       end
 
       # tries to login the user from access token
@@ -40,7 +40,16 @@ module Sorcery
           a[:code] = params[:code] if params[:code]
         end
 
-        get_access_token(args, token_url: token_url, token_method: :post)
+        access_token = get_access_token(args, token_url: token_url, token_method: :post)
+        if team_id 
+          raise 'No team id found. ' unless access_token['team'].present? || access_token['team']['id'].present? 
+          raise 'Invalid team. Potential miss setting. ' if access_token['team']['id'] != team_id 
+        end
+        access_token
+      end
+
+      def authorize_url(options = {})
+        super(options)
       end
     end
   end
